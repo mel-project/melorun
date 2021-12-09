@@ -63,7 +63,7 @@ fn main() -> anyhow::Result<()> {
                 let _ = std::fs::remove_file(Path::new(&tfn));
             });
             let expr = repl_definitions.iter().fold(expr.to_string(), |a, (k, v)| {
-                format!("let {} = ({}) in ({})", k, v, a)
+                format!("(let {} = ({}) in\n{}\n)", k, v, a)
             });
             std::fs::write(
                 Path::new(&tempfile_name),
