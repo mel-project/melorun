@@ -1,0 +1,20 @@
+[package]
+name = "melorun"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.51"
+colored = "2.0.0"
+env_logger = "0.9.0"
+hex = "0.4.3"
+log = "0.4.14"
+regex = "1.5.4"
+rustyline = "9.1.0"
+scopeguard = "1.1.0"
+snailquote = "0.3.1"
+structopt = "0.3.25"
+tempfile = "3.2.0"
+themelio-stf = "0.6.6"
