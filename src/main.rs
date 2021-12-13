@@ -10,7 +10,10 @@ use colored::Colorize;
 use regex::Regex;
 use rustyline::Editor;
 use structopt::StructOpt;
-use themelio_stf::melvm::{Covenant, CovenantEnv, Executor, Value};
+use themelio_stf::{
+    melvm::{Address, Covenant, CovenantEnv, Executor, Value},
+    CoinData, CoinDataHeight, CoinID, Denom, Header, NetID, Transaction,
+};
 
 use crate::envfile::EnvFile;
 
@@ -32,11 +35,11 @@ fn main() -> anyhow::Result<()> {
     let args = Args::from_args();
     // try to read the environment file
     let env_file: Option<EnvFile> = if let Some(ef) = args.environment.as_ref() {
-        toml::from_str(&std::fs::read_to_string(ef)?)?
+        serde_json::from_str(&std::fs::read_to_string(ef)?)?
     } else {
         None
     };
-    let (success, exec) = run_file(&args.input)?;
+    let (success, exec) = run_file(&args.input, env_file.clone())?;
     eprintln!(
         "{}: {}",
         "result".bold(),
@@ -81,7 +84,7 @@ fn main() -> anyhow::Result<()> {
                 Path::new(&tempfile_name),
                 format!("{}\n{}", definitions, expr).as_bytes(),
             )?;
-            let (success, exec) = run_file(Path::new(&tempfile_name))?;
+            let (success, exec) = run_file(Path::new(&tempfile_name), env_file.clone())?;
             if success {
                 Ok(mvm_pretty(exec.stack.last().unwrap()))
             } else {
@@ -184,12 +187,46 @@ fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(bool, Executo
     let mut executor = if let Some(env) = env {
         Executor::new_from_env(
             melvm_ops,
-            env.spender_tx,
+            Transaction {
+                kind: env.spender_tx.kind.unwrap_or(themelio_stf::TxKind::Normal),
+                inputs: env.spender_tx.inputs,
+                outputs: env.spender_tx.outputs,
+                fee: env.spender_tx.fee,
+                scripts: env.spender_tx.scripts,
+                data: env.spender_tx.data,
+                sigs: env.spender_tx.sigs,
+            },
             Some(CovenantEnv {
-                parent_coinid: &env.environment.parent_coinid,
-                parent_cdh: &env.environment.parent_cdh,
+                parent_coinid: &env
+                    .environment
+                    .parent_coinid
+                    .unwrap_or_else(|| CoinID::zero_zero()),
+                parent_cdh: &env
+                    .environment
+                    .parent_cdh
+                    .unwrap_or_else(|| CoinDataHeight {
+                        coin_data: CoinData {
+                            covhash: Address::coin_destroy(),
+                            value: 0.into(),
+                            denom: Denom::Mel,
+                            additional_data: vec![],
+                        },
+                        height: 0.into(),
+                    }),
                 spender_index: env.environment.spender_index,
-                last_header: &env.environment.last_header,
+                last_header: &env.environment.last_header.unwrap_or(Header {
+                    network: NetID::Custom08,
+                    previous: Default::default(),
+                    height: Default::default(),
+                    history_hash: Default::default(),
+                    coins_hash: Default::default(),
+                    transactions_hash: Default::default(),
+                    fee_pool: Default::default(),
+                    fee_multiplier: Default::default(),
+                    dosc_speed: Default::default(),
+                    pools_hash: Default::default(),
+                    stakes_hash: Default::default(),
+                }),
             }),
         )
     } else {

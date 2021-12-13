@@ -699,10 +699,10 @@ dependencies = [
  "serde",
  "serde_json",
  "snailquote",
+ "stdcode",
  "structopt",
  "tempfile",
  "themelio-stf",
- "toml",
 ]
 
 [[package]]
