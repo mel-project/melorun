@@ -1,20 +1,26 @@
+mod envfile;
+
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader},
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Command,
 };
 
 use colored::Colorize;
 use regex::Regex;
 use rustyline::Editor;
 use structopt::StructOpt;
-use themelio_stf::melvm::{Covenant, Executor, Value};
+use themelio_stf::melvm::{Covenant, CovenantEnv, Executor, Value};
+
+use crate::envfile::EnvFile;
 
 #[derive(StructOpt)]
 struct Args {
     #[structopt(short, long)]
     interactive: bool,
+
+    #[structopt(short, long)]
+    environment: Option<PathBuf>,
 
     input: PathBuf,
 }
@@ -24,6 +30,12 @@ fn main() -> anyhow::Result<()> {
     let mut rl = Editor::<()>::new();
 
     let args = Args::from_args();
+    // try to read the environment file
+    let env_file: Option<EnvFile> = if let Some(ef) = args.environment.as_ref() {
+        toml::from_str(&std::fs::read_to_string(ef)?)?
+    } else {
+        None
+    };
     let (success, exec) = run_file(&args.input)?;
     eprintln!(
         "{}: {}",
@@ -149,7 +161,7 @@ fn mvm_pretty(val: &Value) -> String {
 }
 
 // Runs a file with little fanfare. Repeatedly called
-fn run_file(input: &Path) -> anyhow::Result<(bool, Executor)> {
+fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(bool, Executor)> {
     let mut mil_tempfile = tempfile::tempdir()?.into_path();
     mil_tempfile.push("temp.mil");
     // run meloc
@@ -157,6 +169,8 @@ fn run_file(input: &Path) -> anyhow::Result<(bool, Executor)> {
         .arg(input)
         .arg("--output")
         .arg(&mil_tempfile)
+        .arg("--no-logs")
+        .arg("true")
         .output()?;
     if !meloc_result.status.success() {
         eprint!("{}", String::from_utf8_lossy(&meloc_result.stderr));
@@ -167,7 +181,20 @@ fn run_file(input: &Path) -> anyhow::Result<(bool, Executor)> {
         String::from_utf8_lossy(&Command::new("mil").arg(mil_tempfile).output()?.stdout).trim(),
     )?;
     let melvm_ops = Covenant(melvm_hex).to_ops()?;
-    let mut executor = Executor::new(melvm_ops, HashMap::new());
+    let mut executor = if let Some(env) = env {
+        Executor::new_from_env(
+            melvm_ops,
+            env.spender_tx,
+            Some(CovenantEnv {
+                parent_coinid: &env.environment.parent_coinid,
+                parent_cdh: &env.environment.parent_cdh,
+                spender_index: env.environment.spender_index,
+                last_header: &env.environment.last_header,
+            }),
+        )
+    } else {
+        Executor::new(melvm_ops, HashMap::new())
+    };
     let success = executor.run_to_end_preserve_stack();
     Ok((success, executor))
 }
