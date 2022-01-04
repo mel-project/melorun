@@ -1,14 +1,13 @@
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader},
     path::{Path, PathBuf},
-    process::{Command, Stdio},
 };
 
 use colored::Colorize;
 use regex::Regex;
 use rustyline::Editor;
 use structopt::StructOpt;
+use mil::compiler::{BinCode, Compile};
 use themelio_stf::melvm::{Covenant, Executor, Value};
 
 #[derive(StructOpt)]
@@ -150,24 +149,17 @@ fn mvm_pretty(val: &Value) -> String {
 
 // Runs a file with little fanfare. Repeatedly called
 fn run_file(input: &Path) -> anyhow::Result<(bool, Executor)> {
-    let mut mil_tempfile = tempfile::tempdir()?.into_path();
-    mil_tempfile.push("temp.mil");
-    // run meloc
-    let meloc_result = Command::new("meloc")
-        .arg(input)
-        .arg("--output")
-        .arg(&mil_tempfile)
-        .output()?;
-    if !meloc_result.status.success() {
-        eprint!("{}", String::from_utf8_lossy(&meloc_result.stderr));
-        anyhow::bail!("meloc failed")
-    }
-    // run mil
-    let melvm_hex = hex::decode(
-        String::from_utf8_lossy(&Command::new("mil").arg(mil_tempfile).output()?.stdout).trim(),
-    )?;
-    let melvm_ops = Covenant(melvm_hex).to_ops()?;
-    let mut executor = Executor::new(melvm_ops, HashMap::new());
+    // Compile melodeon to mil
+    let melo_str = std::fs::read_to_string(input)?;
+    let mil_code = melodeon::compile(&melo_str, input)
+        .map_err(|ctx| anyhow::anyhow!(format!("Melodeon compilation failed\n{:?}", ctx)))?;
+
+    // Compile mil to op codes
+    let parsed = mil::parser::parse(&mil_code)
+        .map_err(|e| anyhow::anyhow!(format!("Internal error, failed to parse mil output\n{:?}", e)))?;
+    let melvm_ops = parsed.compile_onto(BinCode::default());
+
+    let mut executor = Executor::new(melvm_ops.0, HashMap::new());
     let success = executor.run_to_end_preserve_stack();
     Ok((success, executor))
 }
