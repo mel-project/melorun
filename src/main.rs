@@ -1,3 +1,5 @@
+mod envfile;
+
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -8,12 +10,20 @@ use regex::Regex;
 use rustyline::Editor;
 use structopt::StructOpt;
 use mil::compiler::{BinCode, Compile};
-use themelio_stf::melvm::{Covenant, Executor, Value};
+use themelio_stf::{
+    melvm::{Address, Covenant, CovenantEnv, Executor, Value},
+    CoinData, CoinDataHeight, CoinID, Denom, Header, NetID, Transaction,
+};
+
+use crate::envfile::EnvFile;
 
 #[derive(StructOpt)]
 struct Args {
     #[structopt(short, long)]
     interactive: bool,
+
+    #[structopt(short, long)]
+    environment: Option<PathBuf>,
 
     input: PathBuf,
 }
@@ -23,7 +33,13 @@ fn main() -> anyhow::Result<()> {
     let mut rl = Editor::<()>::new();
 
     let args = Args::from_args();
-    let (success, exec) = run_file(&args.input)?;
+    // try to read the environment file
+    let env_file: Option<EnvFile> = if let Some(ef) = args.environment.as_ref() {
+        serde_json::from_str(&std::fs::read_to_string(ef)?)?
+    } else {
+        None
+    };
+    let (success, exec) = run_file(&args.input, env_file.clone())?;
     eprintln!(
         "{}: {}",
         "result".bold(),
@@ -68,7 +84,7 @@ fn main() -> anyhow::Result<()> {
                 Path::new(&tempfile_name),
                 format!("{}\n{}", definitions, expr).as_bytes(),
             )?;
-            let (success, exec) = run_file(Path::new(&tempfile_name))?;
+            let (success, exec) = run_file(Path::new(&tempfile_name), env_file.clone())?;
             if success {
                 Ok(mvm_pretty(exec.stack.last().unwrap()))
             } else {
@@ -148,7 +164,7 @@ fn mvm_pretty(val: &Value) -> String {
 }
 
 // Runs a file with little fanfare. Repeatedly called
-fn run_file(input: &Path) -> anyhow::Result<(bool, Executor)> {
+fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(bool, Executor)> {
     // Compile melodeon to mil
     let melo_str = std::fs::read_to_string(input)?;
     let mil_code = melodeon::compile(&melo_str, input)
@@ -157,9 +173,130 @@ fn run_file(input: &Path) -> anyhow::Result<(bool, Executor)> {
     // Compile mil to op codes
     let parsed = mil::parser::parse(&mil_code)
         .map_err(|e| anyhow::anyhow!(format!("Internal error, failed to parse mil output\n{:?}", e)))?;
-    let melvm_ops = parsed.compile_onto(BinCode::default());
+    let melvm_ops = parsed.compile_onto(BinCode::default()).0;
 
-    let mut executor = Executor::new(melvm_ops.0, HashMap::new());
+    let mut executor = if let Some(env) = env {
+        Executor::new_from_env(
+            melvm_ops,
+            Transaction {
+                kind: env.spender_tx.kind.unwrap_or(themelio_stf::TxKind::Normal),
+                inputs: env.spender_tx.inputs,
+                outputs: env.spender_tx.outputs,
+                fee: env.spender_tx.fee,
+                scripts: env.spender_tx.scripts,
+                data: env.spender_tx.data,
+                sigs: env.spender_tx.sigs,
+            },
+            Some(CovenantEnv {
+                parent_coinid: &env
+                    .environment
+                    .parent_coinid
+                    .unwrap_or_else(|| CoinID::zero_zero()),
+                parent_cdh: &env
+                    .environment
+                    .parent_cdh
+                    .unwrap_or_else(|| CoinDataHeight {
+                        coin_data: CoinData {
+                            covhash: Address::coin_destroy(),
+                            value: 0.into(),
+                            denom: Denom::Mel,
+                            additional_data: vec![],
+                        },
+                        height: 0.into(),
+                    }),
+                spender_index: env.environment.spender_index,
+                last_header: &env.environment.last_header.unwrap_or(Header {
+                    network: NetID::Custom08,
+                    previous: Default::default(),
+                    height: Default::default(),
+                    history_hash: Default::default(),
+                    coins_hash: Default::default(),
+                    transactions_hash: Default::default(),
+                    fee_pool: Default::default(),
+                    fee_multiplier: Default::default(),
+                    dosc_speed: Default::default(),
+                    pools_hash: Default::default(),
+                    stakes_hash: Default::default(),
+                }),
+            }),
+        )
+    } else {
+        Executor::new(melvm_ops, HashMap::new())
+    };
+
+    //let mut executor = Executor::new(melvm_ops.0, HashMap::new());
+    /*
+=======
+fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(bool, Executor)> {
+    let mut mil_tempfile = tempfile::tempdir()?.into_path();
+    mil_tempfile.push("temp.mil");
+    // run meloc
+    let meloc_result = Command::new("meloc")
+        .arg(input)
+        .arg("--output")
+        .arg(&mil_tempfile)
+        .arg("--no-logs")
+        .arg("true")
+        .output()?;
+    if !meloc_result.status.success() {
+        eprint!("{}", String::from_utf8_lossy(&meloc_result.stderr));
+        anyhow::bail!("meloc failed")
+    }
+    // run mil
+    let melvm_hex = hex::decode(
+        String::from_utf8_lossy(&Command::new("mil").arg(mil_tempfile).output()?.stdout).trim(),
+    )?;
+    let melvm_ops = Covenant(melvm_hex).to_ops()?;
+    let mut executor = if let Some(env) = env {
+        Executor::new_from_env(
+            melvm_ops,
+            Transaction {
+                kind: env.spender_tx.kind.unwrap_or(themelio_stf::TxKind::Normal),
+                inputs: env.spender_tx.inputs,
+                outputs: env.spender_tx.outputs,
+                fee: env.spender_tx.fee,
+                scripts: env.spender_tx.scripts,
+                data: env.spender_tx.data,
+                sigs: env.spender_tx.sigs,
+            },
+            Some(CovenantEnv {
+                parent_coinid: &env
+                    .environment
+                    .parent_coinid
+                    .unwrap_or_else(|| CoinID::zero_zero()),
+                parent_cdh: &env
+                    .environment
+                    .parent_cdh
+                    .unwrap_or_else(|| CoinDataHeight {
+                        coin_data: CoinData {
+                            covhash: Address::coin_destroy(),
+                            value: 0.into(),
+                            denom: Denom::Mel,
+                            additional_data: vec![],
+                        },
+                        height: 0.into(),
+                    }),
+                spender_index: env.environment.spender_index,
+                last_header: &env.environment.last_header.unwrap_or(Header {
+                    network: NetID::Custom08,
+                    previous: Default::default(),
+                    height: Default::default(),
+                    history_hash: Default::default(),
+                    coins_hash: Default::default(),
+                    transactions_hash: Default::default(),
+                    fee_pool: Default::default(),
+                    fee_multiplier: Default::default(),
+                    dosc_speed: Default::default(),
+                    pools_hash: Default::default(),
+                    stakes_hash: Default::default(),
+                }),
+            }),
+        )
+    } else {
+        Executor::new(melvm_ops, HashMap::new())
+    };
+>>>>>>> b70192856841bb99d3a85107f7f558f767eb6bfa
+*/
     let success = executor.run_to_end_preserve_stack();
     Ok((success, executor))
 }
