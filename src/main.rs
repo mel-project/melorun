@@ -11,7 +11,7 @@ use rustyline::Editor;
 use structopt::StructOpt;
 use mil::compiler::{BinCode, Compile};
 use themelio_stf::{
-    melvm::{Address, Covenant, CovenantEnv, Executor, Value},
+    melvm::{Address, CovenantEnv, Executor, Value},
     CoinData, CoinDataHeight, CoinID, Denom, Header, NetID, Transaction,
 };
 
@@ -92,8 +92,8 @@ fn main() -> anyhow::Result<()> {
                 Path::new(&tempfile_name),
                 format!("{}\n{}", definitions, expr).as_bytes(),
             )?;
-            let (success, exec) = run_file(Path::new(&tempfile_name), env_file.clone())?;
-            if success {
+            let (_, exec) = run_file(Path::new(&tempfile_name), env_file.clone())?;
+            if exec.at_end() {
                 Ok(mvm_pretty(exec.stack.last().unwrap()))
             } else {
                 Err(anyhow::anyhow!("execution failed"))
@@ -148,7 +148,13 @@ fn mvm_pretty(val: &Value) -> String {
         Value::Int(i) => i.to_string(),
         Value::Bytes(v) => {
             let raw = (0..v.len()).map(|i| *v.get(i).unwrap()).collect::<Vec<_>>();
-            if let Ok(string) = String::from_utf8(raw.clone()) {
+            if let Some(string) = String::from_utf8(raw.clone()).ok().and_then(|s| {
+                if s.chars().all(|c| !c.is_control()) {
+                    Some(s)
+                } else {
+                    None
+                }
+            }) {
                 let quoted = snailquote::escape(&string);
                 if quoted.starts_with('\'') {
                     quoted.replace("\'", "\"")
