@@ -881,9 +881,9 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "melodeon"
-version = "0.3.5"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3e1a5ac6031b522885772603e652e9bfd71f71c9675a8cc189418053ab6fc95"
+checksum = "cc0e37d3ef5770fd6586ea5d733e1add33d47cc457909e7658d20916bb5350db"
 dependencies = [
  "anyhow",
  "argh",
@@ -964,9 +964,9 @@ dependencies = [
 
 [[package]]
 name = "mil"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3eb05e288db41eee8000b2569444e52bc5aae8357b1402143a0f39d88d037c"
+checksum = "f9de73d6f79d86d8e59fde1074f2e1e8ee96a06b80f1002c196a1e4edabedd09"
 dependencies = [
  "anyhow",
  "env_logger 0.8.4",
