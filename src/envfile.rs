@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use themelio_stf::{
-    melvm::Covenant, CoinData, CoinDataHeight, CoinID, CoinValue, Header, HexBytes, TxKind,
+use themelio_structs::{
+    CoinData, CoinDataHeight, CoinID, CoinValue, Header, TxKind,
 };
 
 /// YAML/TOML/JSON-encoded environment file
@@ -23,12 +23,12 @@ pub struct TransactionRepr {
     #[serde(default)]
     pub fee: CoinValue,
     #[serde(default)]
-    pub scripts: Vec<Covenant>,
+    pub scripts: Vec<Vec<u8>>,
     #[serde(with = "stdcode::hex")]
     #[serde(default)]
     pub data: Vec<u8>,
     #[serde(default)]
-    pub sigs: Vec<HexBytes>,
+    pub sigs: Vec<Vec<u8>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -21,6 +21,10 @@ stdcode = "0.1.4"
 structopt = "0.3.25"
 tap = "1.0.1"
 tempfile = "3.2.0"
-themelio-stf = "0.6.6"
-mil = "0.2.2"
-melodeon = "0.3.8"
+themelio-stf = "0.9.6"
+#themelio-stf = { path = "../themelio-stf" }
+themelio-structs = "0.2"
+mil = "0.2.4"
+#mil = { path = "../mil" }
+melodeon = "0.3.9"
+#melodeon = { path = "../melodeon-rs" }

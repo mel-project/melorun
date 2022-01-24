@@ -10,9 +10,9 @@ use regex::Regex;
 use rustyline::Editor;
 use structopt::StructOpt;
 use mil::compiler::{BinCode, Compile};
-use themelio_stf::{
-    melvm::{Address, CovenantEnv, Executor, Value},
-    CoinData, CoinDataHeight, CoinID, Denom, Header, NetID, Transaction,
+use themelio_stf::melvm::{CovenantEnv, Executor, Value};
+use themelio_structs::{
+    Address, CoinData, CoinDataHeight, CoinID, Denom, Header, NetID, Transaction, TxKind,
 };
 
 use crate::envfile::EnvFile;
@@ -193,11 +193,11 @@ fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(bool, Executo
         Executor::new_from_env(
             melvm_ops,
             Transaction {
-                kind: env.spender_tx.kind.unwrap_or(themelio_stf::TxKind::Normal),
+                kind: env.spender_tx.kind.unwrap_or(TxKind::Normal),
                 inputs: env.spender_tx.inputs,
                 outputs: env.spender_tx.outputs,
                 fee: env.spender_tx.fee,
-                scripts: env.spender_tx.scripts,
+                covenants: env.spender_tx.scripts,
                 data: env.spender_tx.data,
                 sigs: env.spender_tx.sigs,
             },
