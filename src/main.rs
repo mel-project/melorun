@@ -40,6 +40,7 @@ fn main() -> anyhow::Result<()> {
         None
     };
     // Treat input directory as a project
+    //env_logger::init();
     let (success, exec) = if args.input.is_dir() {
         let main_file = Path::new(&args.input).join("main.melo");
         run_file(&main_file, env_file.clone())?
@@ -51,12 +52,17 @@ fn main() -> anyhow::Result<()> {
     eprintln!(
         "{}: {}",
         "result".bold(),
-        if success {
-            "success".green()
+        if let Some(res) = success {
+            if res {
+            "Covenant evaluates true".green()
+            } else {
+                "Covenant evaluates false".red()
+            }
         } else {
-            "failed".red()
+            "Early termination from program failure".red()
         }
     );
+    //eprintln!("{:?}", exec.stack);
     eprintln!(
         "{}: {}",
         "value".bold(),
@@ -178,14 +184,14 @@ fn mvm_pretty(val: &Value) -> String {
 }
 
 // Runs a file with little fanfare. Repeatedly called
-fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(bool, Executor)> {
+fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(Option<bool>, Executor)> {
     // Compile melodeon to mil
     let melo_str = std::fs::read_to_string(input)?;
     let mil_code = melodeon::compile(&melo_str, input)
         .map_err(|ctx| anyhow::anyhow!(format!("Melodeon compilation failed\n{}", ctx)))?;
 
     // Compile mil to op codes
-    let parsed = mil::parser::parse(&mil_code)
+    let parsed = mil::parser::parse_no_optimize(&mil_code)
         .map_err(|e| anyhow::anyhow!(format!("Internal error, failed to parse mil output\n{:?}", e)))?;
     let melvm_ops = parsed.compile_onto(BinCode::default()).0;
 
@@ -238,6 +244,6 @@ fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(bool, Executo
         Executor::new(melvm_ops, HashMap::new())
     };
 
-    let success = executor.run_to_end_preserve_stack();
+    let success = executor.run_discerning_to_end_preserve_stack();
     Ok((success, executor))
 }
