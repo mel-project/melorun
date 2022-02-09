@@ -22,9 +22,6 @@ structopt = "0.3.25"
 tap = "1.0.1"
 tempfile = "3.2.0"
 themelio-stf = { version = "0.9.7", features = ["print"] }
-#themelio-stf = { path = "../themelio-stf", features = ["print"] }
 themelio-structs = "0.2"
 mil = "0.2.5"
-#mil = { path = "../mil" }
-melodeon = "0.3.10"
-#melodeon = { path = "../melodeon" }
+melodeon = "0.4.0"
