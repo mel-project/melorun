@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
-use themelio_structs::{
-    CoinData, CoinDataHeight, CoinID, CoinValue, Header, TxKind,
-};
+use themelio_structs::{CoinData, CoinDataHeight, CoinID, CoinValue, Header, TxKind};
 
 /// YAML/TOML/JSON-encoded environment file
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -27,6 +25,7 @@ pub struct TransactionRepr {
     #[serde(with = "stdcode::hex")]
     #[serde(default)]
     pub data: Vec<u8>,
+    #[serde(with = "stdcode::hexvec")]
     #[serde(default)]
     pub sigs: Vec<Vec<u8>>,
 }

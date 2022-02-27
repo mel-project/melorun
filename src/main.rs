@@ -6,11 +6,11 @@ use std::{
 };
 
 use colored::Colorize;
+use mil::compiler::{BinCode, Compile};
 use regex::Regex;
 use rustyline::Editor;
 use structopt::StructOpt;
-use mil::compiler::{BinCode, Compile};
-use themelio_stf::melvm::{CovenantEnv, Executor, Value};
+use themelio_stf::melvm::{Covenant, CovenantEnv, Executor, Value};
 use themelio_structs::{
     Address, CoinData, CoinDataHeight, CoinID, Denom, Header, NetID, Transaction, TxKind,
 };
@@ -41,7 +41,7 @@ fn main() -> anyhow::Result<()> {
     };
     // Treat input directory as a project
     //env_logger::init();
-    let (success, exec) = if args.input.is_dir() {
+    let (success, exec, covenant) = if args.input.is_dir() {
         let main_file = Path::new(&args.input).join("main.melo");
         run_file(&main_file, env_file.clone())?
     }
@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
         "result".bold(),
         if let Some(res) = success {
             if res {
-            "Covenant evaluates true".green()
+                "Covenant evaluates true".green()
             } else {
                 "Covenant evaluates false".red()
             }
@@ -62,6 +62,26 @@ fn main() -> anyhow::Result<()> {
             "Early termination from program failure".red()
         }
     );
+    if success.is_none() {
+        eprintln!("-- PROGRAM --");
+        for (i, elem) in covenant.to_ops().unwrap().into_iter().enumerate() {
+            if i == exec.pc() {
+                eprintln!("{} <- \t {}", i, elem)
+            } else {
+                eprintln!("{} \t {}", i, elem)
+            }
+        }
+        eprintln!("-- STACK --");
+        for (i, elem) in exec.stack.iter().enumerate() {
+            eprintln!("{}: {}", i, mvm_pretty(elem));
+        }
+        eprintln!("-- HEAP --");
+        let mut hh = exec.heap.clone().into_iter().collect::<Vec<_>>();
+        hh.sort_unstable_by_key(|d| d.0);
+        for (k, v) in hh.iter() {
+            eprintln!("{}: {}", k, mvm_pretty(v));
+        }
+    }
     //eprintln!("{:?}", exec.stack);
     eprintln!(
         "{}: {}",
@@ -98,7 +118,7 @@ fn main() -> anyhow::Result<()> {
                 Path::new(&tempfile_name),
                 format!("{}\n{}", definitions, expr).as_bytes(),
             )?;
-            let (_, exec) = run_file(Path::new(&tempfile_name), env_file.clone())?;
+            let (_, exec, _) = run_file(Path::new(&tempfile_name), env_file.clone())?;
             if exec.at_end() {
                 Ok(mvm_pretty(exec.stack.last().unwrap()))
             } else {
@@ -184,20 +204,27 @@ fn mvm_pretty(val: &Value) -> String {
 }
 
 // Runs a file with little fanfare. Repeatedly called
-fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(Option<bool>, Executor)> {
+fn run_file(
+    input: &Path,
+    env: Option<EnvFile>,
+) -> anyhow::Result<(Option<bool>, Executor, Covenant)> {
     // Compile melodeon to mil
     let melo_str = std::fs::read_to_string(input)?;
     let mil_code = melodeon::compile(&melo_str, input)
         .map_err(|ctx| anyhow::anyhow!(format!("Melodeon compilation failed\n{}", ctx)))?;
 
     // Compile mil to op codes
-    let parsed = mil::parser::parse_no_optimize(&mil_code)
-        .map_err(|e| anyhow::anyhow!(format!("Internal error, failed to parse mil output\n{:?}", e)))?;
+    let parsed = mil::parser::parse_no_optimize(&mil_code).map_err(|e| {
+        anyhow::anyhow!(format!(
+            "Internal error, failed to parse mil output\n{:?}",
+            e
+        ))
+    })?;
     let melvm_ops = parsed.compile_onto(BinCode::default()).0;
 
     let mut executor = if let Some(env) = env {
         Executor::new_from_env(
-            melvm_ops,
+            melvm_ops.clone(),
             Transaction {
                 kind: env.spender_tx.kind.unwrap_or(TxKind::Normal),
                 inputs: env.spender_tx.inputs,
@@ -211,7 +238,7 @@ fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(Option<bool>,
                 parent_coinid: &env
                     .environment
                     .parent_coinid
-                    .unwrap_or_else(|| CoinID::zero_zero()),
+                    .unwrap_or_else(CoinID::zero_zero),
                 parent_cdh: &env
                     .environment
                     .parent_cdh
@@ -241,9 +268,9 @@ fn run_file(input: &Path, env: Option<EnvFile>) -> anyhow::Result<(Option<bool>,
             }),
         )
     } else {
-        Executor::new(melvm_ops, HashMap::new())
+        Executor::new(melvm_ops.clone(), HashMap::new())
     };
 
     let success = executor.run_discerning_to_end_preserve_stack();
-    Ok((success, executor))
+    Ok((success, executor, Covenant::from_ops(&melvm_ops).unwrap()))
 }
