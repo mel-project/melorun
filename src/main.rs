@@ -29,6 +29,7 @@ struct Args {
 }
 
 fn main() -> anyhow::Result<()> {
+    env_logger::init();
     std::env::set_var("CLICOLOR_FORCE", "1");
     let mut rl = Editor::<()>::new();
 
@@ -212,7 +213,7 @@ fn run_file(
     let melo_str = std::fs::read_to_string(input)?;
     let mil_code = melodeon::compile(&melo_str, input)
         .map_err(|ctx| anyhow::anyhow!(format!("Melodeon compilation failed\n{}", ctx)))?;
-
+    log::debug!("mil code: {}", mil_code);
     // Compile mil to op codes
     let parsed = mil::parser::parse_no_optimize(&mil_code).map_err(|e| {
         anyhow::anyhow!(format!(
