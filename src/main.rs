@@ -59,9 +59,9 @@ fn main() -> anyhow::Result<()> {
         "result".bold(),
         if let Some(res) = success {
             if res {
-                "Covenant evaluates true".green()
+                "PASS".green()
             } else {
-                "Covenant evaluates false".red()
+                "FAIL".red()
             }
         } else {
             "Early termination from program failure".red()
@@ -154,14 +154,14 @@ fn main() -> anyhow::Result<()> {
                             Ok(val) => {
                                 repl_definitions.insert(varname, val);
                             }
-                            Err(err) => eprintln!("{}", err.to_string().bright_red()),
+                            Err(err) => eprintln!("{}", err),
                         }
                     } else {
                         match run_expr(&line, &repl_definitions) {
                             Ok(val) => {
                                 eprintln!("{}", val);
                             }
-                            Err(err) => eprintln!("{}", err.to_string().bright_red()),
+                            Err(err) => eprintln!("{}", err),
                         }
                     }
                     eprintln!();
@@ -212,7 +212,7 @@ fn read_file(input: Option<&Path>) -> anyhow::Result<String> {
     Ok(if let Some(input) = input {
         std::fs::read_to_string(input)?
     } else {
-        "fn __() = 3".to_string()
+        "def f() = 3\n".to_string()
     })
 }
 
@@ -223,8 +223,14 @@ fn run_file(
 ) -> anyhow::Result<(Option<bool>, Executor, Covenant)> {
     // Compile melodeon to mil
     let melo_str = read_file(input)?;
-    let mil_code = melodeon::compile(&melo_str, input.unwrap_or_else(|| Path::new(".")))
-        .map_err(|ctx| anyhow::anyhow!(format!("Melodeon compilation failed\n{}", ctx)))?;
+    let mil_code =
+        melodeon::compile(&melo_str, input.unwrap_or_else(|| Path::new("."))).map_err(|ctx| {
+            anyhow::anyhow!(format!(
+                "{}\n{}",
+                "Melodeon compilation failed".bold().red(),
+                ctx
+            ))
+        })?;
     log::debug!("mil code: {}", mil_code);
     // Compile mil to op codes
     let parsed = mil::parser::parse_no_optimize(&mil_code).map_err(|e| {

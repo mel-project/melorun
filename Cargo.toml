@@ -8,25 +8,25 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.55"
+anyhow = "1.0.57"
 colored = "2.0.0"
 env_logger = "0.9.0"
 hex = "0.4.3"
-log = "0.4.14"
-regex = "1.5.4"
+log = "0.4.17"
+regex = "1.5.6"
 rustyline = "9.1.2"
 scopeguard = "1.1.0"
-serde = { version = "1.0.136", features = ["derive"] }
-serde_json = "1.0.79"
+serde = { version = "1.0.137", features = ["derive"] }
+serde_json = "1.0.81"
 snailquote = "0.3.1"
 stdcode = "0.1.7"
 structopt = "0.3.26"
 tap = "1.0.1"
 tempfile = "3.3.0"
-themelio-stf = { version = "0.9.9", features = ["print"] }
-themelio-structs = "0.2.1"
-mil = "0.2.6"
-melodeon = "0.4.2"
+themelio-stf = { version = "0.10.5", features = ["print"] }
+themelio-structs = "0.2.4" 
+mil = "0.3.1"
+melodeon = "0.4.4"
 
 
 # [patch.crates-io]
