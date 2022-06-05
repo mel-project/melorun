@@ -1035,6 +1035,7 @@ dependencies = [
  "tempfile",
  "themelio-stf",
  "themelio-structs",
+ "thiserror",
 ]
 
 [[package]]
