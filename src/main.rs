@@ -25,7 +25,7 @@ struct Args {
     #[structopt(short, long)]
     environment: Option<PathBuf>,
 
-    input: PathBuf,
+    input: Option<PathBuf>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -42,13 +42,17 @@ fn main() -> anyhow::Result<()> {
     };
     // Treat input directory as a project
     //env_logger::init();
-    let (success, exec, covenant) = if args.input.is_dir() {
-        let main_file = Path::new(&args.input).join("main.melo");
-        run_file(&main_file, env_file.clone())?
-    }
-    // Input is a single file
-    else {
-        run_file(&args.input, env_file.clone())?
+    let (success, exec, covenant) = if let Some(input) = args.input.clone() {
+        if input.is_dir() {
+            let main_file = Path::new(&input).join("main.melo");
+            run_file(Some(&main_file), env_file.clone())?
+        }
+        // Input is a single file
+        else {
+            run_file(Some(&input), env_file.clone())?
+        }
+    } else {
+        run_file(None, env_file.clone())?
     };
     eprintln!(
         "{}: {}",
@@ -89,7 +93,7 @@ fn main() -> anyhow::Result<()> {
         "value".bold(),
         exec.stack
             .last()
-            .map(|v| mvm_pretty(&v))
+            .map(mvm_pretty)
             .unwrap_or_else(|| "(none)".to_string())
     );
     if !args.interactive {
@@ -97,7 +101,7 @@ fn main() -> anyhow::Result<()> {
     } else {
         // enter the repl loop
         // first we write the tempfile
-        let source_code = std::fs::read_to_string(&args.input)?;
+        let source_code = read_file(args.input.as_deref())?;
         let definitions = source_code
             .split("---")
             .find(|s| s.contains("def "))
@@ -107,10 +111,9 @@ fn main() -> anyhow::Result<()> {
         let mut repl_definitions: HashMap<String, String> = HashMap::new();
         let var_regex = Regex::new("[a-z][A-Z0-9_]*")?;
         let run_expr = |expr: &str, repl_definitions: &HashMap<String, String>| {
-            let tempfile_name = format!("{}.tmp", args.input.to_string_lossy());
-            let tfn = tempfile_name.clone();
+            let tempfile_name = ".melorun.melo.tmp";
             scopeguard::defer!({
-                let _ = std::fs::remove_file(Path::new(&tfn));
+                let _ = std::fs::remove_file(Path::new(&tempfile_name));
             });
             let expr = repl_definitions.iter().fold(expr.to_string(), |a, (k, v)| {
                 format!("(let {} = ({}) in\n{}\n)", k, v, a)
@@ -119,7 +122,7 @@ fn main() -> anyhow::Result<()> {
                 Path::new(&tempfile_name),
                 format!("{}\n{}", definitions, expr).as_bytes(),
             )?;
-            let (_, exec, _) = run_file(Path::new(&tempfile_name), env_file.clone())?;
+            let (_, exec, _) = run_file(Some(Path::new(tempfile_name)), env_file.clone())?;
             if exec.at_end() {
                 Ok(mvm_pretty(exec.stack.last().unwrap()))
             } else {
@@ -184,7 +187,7 @@ fn mvm_pretty(val: &Value) -> String {
             }) {
                 let quoted = snailquote::escape(&string);
                 if quoted.starts_with('\'') {
-                    quoted.replace("\'", "\"")
+                    quoted.replace('\'', "\"")
                 } else if quoted.starts_with('\"') {
                     quoted.into_owned()
                 } else {
@@ -204,14 +207,23 @@ fn mvm_pretty(val: &Value) -> String {
     }
 }
 
+/// Reads a file to a string.
+fn read_file(input: Option<&Path>) -> anyhow::Result<String> {
+    Ok(if let Some(input) = input {
+        std::fs::read_to_string(input)?
+    } else {
+        "fn __() = 3".to_string()
+    })
+}
+
 // Runs a file with little fanfare. Repeatedly called
 fn run_file(
-    input: &Path,
+    input: Option<&Path>,
     env: Option<EnvFile>,
 ) -> anyhow::Result<(Option<bool>, Executor, Covenant)> {
     // Compile melodeon to mil
-    let melo_str = std::fs::read_to_string(input)?;
-    let mil_code = melodeon::compile(&melo_str, input)
+    let melo_str = read_file(input)?;
+    let mil_code = melodeon::compile(&melo_str, input.unwrap_or_else(|| Path::new(".")))
         .map_err(|ctx| anyhow::anyhow!(format!("Melodeon compilation failed\n{}", ctx)))?;
     log::debug!("mil code: {}", mil_code);
     // Compile mil to op codes
