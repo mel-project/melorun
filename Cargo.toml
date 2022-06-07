@@ -26,8 +26,9 @@ tempfile = "3.3.0"
 themelio-stf = { version = "0.10.5", features = ["print"] }
 themelio-structs = "0.2.4"
 mil = "0.3.2"
-#mil = {path="../mil"}
-melodeon = "0.4.8"
+# mil = {path="../mil"}
+melodeon = "0.4.12"
+# melodeon= {path="../melodeon-rs"}
 thiserror = "1.0.31"
 
 
