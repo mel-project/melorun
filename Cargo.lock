@@ -979,9 +979,9 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "melodeon"
-version = "0.4.12"
+version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5926958bdf8e8ecbd9e93d9f9d59b4f0851679f7b56f5a1a54d7051d1083308"
+checksum = "ef8bb9673b35cb12e4a2fee7d4856792fe85e310c08594c91995adee0b1b9af9"
 dependencies = [
  "anyhow",
  "argh",
