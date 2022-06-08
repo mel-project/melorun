@@ -31,7 +31,7 @@ struct Args {
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
-    std::env::set_var("CLICOLOR_FORCE", "1");
+    // std::env::set_var("CLICOLOR_FORCE", "1");
     let mut rl = Editor::<()>::new();
 
     let args = Args::from_args();
