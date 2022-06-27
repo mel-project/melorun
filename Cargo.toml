@@ -23,13 +23,14 @@ stdcode = "0.1.7"
 structopt = "0.3.26"
 tap = "1.0.1"
 tempfile = "3.3.0"
-themelio-stf = { version = "0.10.5", features = ["print"] }
+themelio-stf = { version = "0.11.0", features = ["print"] }
 themelio-structs = "0.2.4"
-mil = "0.3.2"
-# mil = {path="../mil"}
-melodeon = "0.4.14"
-# melodeon= {path="../melodeon-rs"}
+# mil = "0.3.2"
+mil = {path="../mil"}
+# melodeon = "0.4.14"
+melodeon= {path="../melodeon-rs"}
 thiserror = "1.0.31"
+derivative = "2.2.0"
 
 
 # [patch.crates-io]

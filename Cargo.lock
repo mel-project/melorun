@@ -979,9 +979,7 @@ checksum = "3e2e65a1a2e43cfcb47a895c4c8b10d1f4a61097f9f254f183aee60cad9c651d"
 
 [[package]]
 name = "melodeon"
-version = "0.4.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fb0769de047a56e955252cb6b3466a7329422f191e0471bca7f529637135dfa"
+version = "0.4.17"
 dependencies = [
  "anyhow",
  "argh",
@@ -1018,6 +1016,7 @@ version = "0.3.3"
 dependencies = [
  "anyhow",
  "colored",
+ "derivative",
  "env_logger",
  "hex",
  "log",
@@ -1078,8 +1077,6 @@ dependencies = [
 [[package]]
 name = "mil"
 version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3d9fdc778655f2d610132fc0d0781a73a88c974f0eaa4fa439063c8a382c9a7"
 dependencies = [
  "anyhow",
  "env_logger",
@@ -2017,9 +2014,9 @@ dependencies = [
 
 [[package]]
 name = "themelio-stf"
-version = "0.10.6"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c480ead4d41eb029357ec07558633aebccc967c062b98e15c71630fd3d7fe13d"
+checksum = "cb9effb48a664104881132aed0cb97fec0a2a1380e8ee2f6614064c4ab95a96e"
 dependencies = [
  "arbitrary",
  "assoc",

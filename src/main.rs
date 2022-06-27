@@ -255,11 +255,11 @@ fn run_file(
                 sigs: env.spender_tx.sigs,
             },
             Some(CovenantEnv {
-                parent_coinid: &env
+                parent_coinid: env
                     .environment
                     .parent_coinid
                     .unwrap_or_else(CoinID::zero_zero),
-                parent_cdh: &env
+                parent_cdh: env
                     .environment
                     .parent_cdh
                     .unwrap_or_else(|| CoinDataHeight {
@@ -272,7 +272,7 @@ fn run_file(
                         height: 0.into(),
                     }),
                 spender_index: env.environment.spender_index,
-                last_header: &env.environment.last_header.unwrap_or(Header {
+                last_header: env.environment.last_header.unwrap_or(Header {
                     network: NetID::Custom08,
                     previous: Default::default(),
                     height: Default::default(),

@@ -1,5 +1,8 @@
+use derivative::Derivative;
+use mil::compiler::{BinCode, Compile};
 use std::path::{Path, PathBuf};
-use themelio_stf::melvm;
+use themelio_stf::melvm::{self, opcode::OpCode, CovenantEnv, Executor};
+use themelio_structs::{Address, CoinData, CoinDataHeight, CoinID, Header, Transaction};
 use thiserror::Error;
 
 /// A high-level runner for Melodeon files.
@@ -8,42 +11,111 @@ pub struct Runner {
     src_contents: String,
     /// Path to that valid Melodeon program.
     src_path: PathBuf,
+    /// Covenant environment.
+    env: CovenantEnv,
+    /// Transaction.
+    txn: Transaction,
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Derivative)]
+#[derivative(Debug)]
 pub enum LoadFileError {
     #[error("could not read file: {0:?}")]
     IoError(std::io::Error),
     #[error("cannot compile Melodeon covenant: {0:?}")]
     MeloError(melodeon::context::CtxErr),
+    #[error("MelVM execution failed")]
+    VmError(#[derivative(Debug = "ignore")] Executor),
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Derivative)]
+#[derivative(Debug)]
 pub enum ReplError {
     #[error("cannot compile Melodeon covenant: {0:?}")]
     MeloError(melodeon::context::CtxErr),
     #[error("MelVM execution failed")]
-    VmError,
+    VmError(#[derivative(Debug = "ignore")] Executor),
 }
 
 impl Runner {
     /// Create a new Runner with nothing loaded.
-    pub fn new() -> Self {
+    pub fn new(env: Option<CovenantEnv>, txn: Option<Transaction>) -> Self {
         Self {
             src_contents: "0".into(),
             src_path: PathBuf::from("."),
+            env: env.unwrap_or(CovenantEnv {
+                parent_coinid: CoinID::zero_zero(),
+                parent_cdh: CoinDataHeight {
+                    height: 0.into(),
+                    coin_data: CoinData {
+                        covhash: Address(Default::default()),
+                        value: 0.into(),
+                        denom: themelio_structs::Denom::Mel,
+                        additional_data: vec![],
+                    },
+                },
+                spender_index: 0,
+                last_header: Header {
+                    network: themelio_structs::NetID::Mainnet,
+                    previous: Default::default(),
+                    height: 0.into(),
+                    history_hash: Default::default(),
+                    coins_hash: Default::default(),
+                    transactions_hash: Default::default(),
+                    fee_pool: Default::default(),
+                    fee_multiplier: Default::default(),
+                    dosc_speed: Default::default(),
+                    pools_hash: Default::default(),
+                    stakes_hash: Default::default(),
+                },
+            }),
+            txn: txn.unwrap_or(Transaction {
+                kind: themelio_structs::TxKind::Normal,
+                inputs: Default::default(),
+                outputs: Default::default(),
+                fee: Default::default(),
+                covenants: Default::default(),
+                data: Default::default(),
+                sigs: Default::default(),
+            }),
         }
     }
 
     /// Loads a file containing a Melodeon program, returning the  
-    pub fn load_program(&mut self, path: &Path) -> Result<melvm::Value, LoadFileError> {
+    pub fn load_file(&mut self, path: &Path) -> Result<melvm::Value, LoadFileError> {
         let melo_str = std::fs::read_to_string(path).map_err(LoadFileError::IoError)?;
 
-        todo!()
+        self.load_str(path, &melo_str)
     }
 
-    /// Runs a REPL line, which may be a definition or an expression.
-    pub fn run_repl_line(&mut self, line: &str) -> Result<Option<melvm::Value>, ReplError> {
-        todo!()
+    /// Load a string, read from a given path.
+    pub fn load_str(&mut self, path: &Path, s: &str) -> Result<melvm::Value, LoadFileError> {
+        let s = melodeon::compile(s, path).map_err(LoadFileError::MeloError)?;
+        let parsed = mil::parser::parse_no_optimize(&s).expect("BUG: mil compilation failed");
+        let melvm_ops = parsed.compile_onto(BinCode::default()).0;
+        let mut executor =
+            Executor::new_from_env(melvm_ops, self.txn.clone(), Some(self.env.clone()));
+        if executor.run_discerning_to_end_preserve_stack().is_none() {
+            return Err(LoadFileError::VmError(executor));
+        }
+        let val = executor.stack.pop().unwrap();
+        Ok(val)
+    }
+
+    /// Runs a REPL line, returning the execution result.
+    pub fn run_repl_line(&mut self, line: &str) -> Result<melvm::Value, ReplError> {
+        let line = line.trim();
+        let s = self.src_contents.split("---").next().unwrap();
+        let s = format!("{}\n---\n{}", s, line);
+        let s = melodeon::compile(&s, &self.src_path).map_err(ReplError::MeloError)?;
+        let parsed = mil::parser::parse_no_optimize(&s).expect("BUG: mil compilation failed");
+        let melvm_ops = parsed.compile_onto(BinCode::default()).0;
+        let mut executor =
+            Executor::new_from_env(melvm_ops, self.txn.clone(), Some(self.env.clone()));
+        if executor.run_discerning_to_end_preserve_stack().is_none() {
+            return Err(ReplError::VmError(executor));
+        }
+        let val = executor.stack.pop().unwrap();
+        Ok(val)
     }
 }
