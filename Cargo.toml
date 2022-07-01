@@ -1,6 +1,6 @@
 [package]
 name = "melorun"
-version = "0.3.3"
+version = "0.3.4"
 description = "Melodeon interactive repl and command-line evaluator"
 license = "MPL-2.0"
 edition = "2021"
