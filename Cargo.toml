@@ -33,7 +33,7 @@ thiserror = "1.0.31"
 derivative = "2.2.0"
 
 [features]
-# default=["rustyline"]
+default=["rustyline"]
 # rustyline=[]
 
 
