@@ -1,17 +1,14 @@
-mod envfile;
-pub mod runner;
-
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use colored::Colorize;
 
 use melodeon::typesys::Type;
-use runner::LoadFileError;
+use melorun::LoadFileError;
 use rustyline::Editor;
 use structopt::StructOpt;
 use themelio_stf::melvm::Value;
 
-use crate::{envfile::EnvFile, runner::Runner};
+use melorun::{EnvFile, Runner};
 
 #[derive(StructOpt)]
 struct Args {
