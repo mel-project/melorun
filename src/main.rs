@@ -4,6 +4,7 @@ use colored::Colorize;
 
 use melodeon::typesys::Type;
 use melorun::LoadFileError;
+#[cfg(feature = "rustyline")]
 use rustyline::Editor;
 use structopt::StructOpt;
 use themelio_stf::melvm::Value;
@@ -21,6 +22,12 @@ struct Args {
     input: Option<PathBuf>,
 }
 
+#[cfg(not(feature = "rustyline"))]
+fn main() {
+    todo!()
+}
+
+#[cfg(feature = "rustyline")]
 fn main() -> anyhow::Result<()> {
     env_logger::init();
     // std::env::set_var("CLICOLOR_FORCE", "1");
