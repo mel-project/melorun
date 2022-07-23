@@ -100,7 +100,11 @@ impl Runner {
         } else {
             ""
         };
-        let s = format!("{}\n---\n{}\n\n", s, line);
+        let s = if s.is_empty() {
+            line.to_string()
+        } else {
+            format!("{}\n---\n{}\n\n", s, line)
+        };
         // eprintln!("{}", s);
         let (s, t) = melodeon::compile(&s, &self.src_path).map_err(ReplError::MeloError)?;
         let parsed = mil::parser::parse_no_optimize(&s).expect("BUG: mil compilation failed");
