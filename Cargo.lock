@@ -1077,7 +1077,7 @@ dependencies = [
 
 [[package]]
 name = "melorun"
-version = "0.6.1"
+version = "0.6.2"
 dependencies = [
  "anyhow",
  "colored",
