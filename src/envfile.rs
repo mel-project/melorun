@@ -109,6 +109,7 @@ pub struct SpendContext {
     /// Optionally fill in the other inputs of the transaction.
     pub spender_other_inputs: BTreeMap<u8, CoinID>,
     /// Which index is the coin?
+    #[serde(default)]
     pub spender_index: u8,
     /// Data field of the spending transaction.
     #[serde(with = "stdcode::hex", default)]
@@ -120,7 +121,7 @@ pub struct SpendContext {
     #[serde(with = "serde_with::rust::display_fromstr", default)]
     pub parent_value: CoinValue,
     /// Denom of the parent coin.
-    #[serde(with = "serde_with::rust::display_fromstr")]
+    #[serde(with = "serde_with::rust::display_fromstr", default = "default_denom")]
     pub parent_denom: Denom,
     /// Additional data of the parent coin.
     #[serde(with = "stdcode::hex", default)]
@@ -132,6 +133,10 @@ pub struct SpendContext {
 
 fn default_txkind() -> TxKind {
     TxKind::Normal
+}
+
+fn default_denom() -> Denom {
+    Denom::Mel
 }
 
 fn map_to_vec<V: Clone>(map: BTreeMap<u8, V>, default: V) -> Vec<V> {
