@@ -92,7 +92,10 @@ impl Runner {
         let line = line.trim();
         let s = if self.src_contents.contains("---") {
             self.src_contents.split("---").next().unwrap()
-        } else if self.src_contents.contains("def") {
+        } else if self.src_contents.contains("def")
+            || self.src_contents.contains("provide")
+            || self.src_contents.contains("require")
+        {
             &self.src_contents
         } else {
             ""
