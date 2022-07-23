@@ -2,9 +2,11 @@ use derivative::Derivative;
 use melodeon::typesys::Type;
 use mil::compiler::{BinCode, Compile};
 use std::path::{Path, PathBuf};
-use themelio_stf::melvm::{self, CovenantEnv, Executor};
-use themelio_structs::{Address, CoinData, CoinDataHeight, CoinID, Header, Transaction};
+use themelio_stf::melvm::{self, Covenant, Executor};
+use themelio_structs::{Denom, TxKind};
 use thiserror::Error;
+
+use crate::{EnvFile, SpendContext};
 
 /// A high-level runner for Melodeon files.
 pub struct Runner {
@@ -12,10 +14,8 @@ pub struct Runner {
     src_contents: String,
     /// Path to that valid Melodeon program.
     src_path: PathBuf,
-    /// Covenant environment.
-    env: CovenantEnv,
-    /// Transaction.
-    txn: Transaction,
+    /// Covenant spend context.
+    ctx: SpendContext,
 }
 
 #[derive(Error, Derivative)]
@@ -40,45 +40,21 @@ pub enum ReplError {
 
 impl Runner {
     /// Create a new Runner with nothing loaded.
-    pub fn new(env: Option<CovenantEnv>, txn: Option<Transaction>) -> Self {
+    pub fn new(ctx: Option<SpendContext>) -> Self {
         Self {
             src_contents:
                 "def z8990eb86ebbfda6ffb26010466539320a33a165388b1d0d028dff489841952d9() = 0".into(), // complete garbage
             src_path: PathBuf::from("."),
-            env: env.unwrap_or(CovenantEnv {
-                parent_coinid: CoinID::zero_zero(),
-                parent_cdh: CoinDataHeight {
-                    height: 0.into(),
-                    coin_data: CoinData {
-                        covhash: Address(Default::default()),
-                        value: 0.into(),
-                        denom: themelio_structs::Denom::Mel,
-                        additional_data: vec![],
-                    },
-                },
-                spender_index: 0,
-                last_header: Header {
-                    network: themelio_structs::NetID::Mainnet,
-                    previous: Default::default(),
-                    height: 0.into(),
-                    history_hash: Default::default(),
-                    coins_hash: Default::default(),
-                    transactions_hash: Default::default(),
-                    fee_pool: Default::default(),
-                    fee_multiplier: Default::default(),
-                    dosc_speed: Default::default(),
-                    pools_hash: Default::default(),
-                    stakes_hash: Default::default(),
-                },
-            }),
-            txn: txn.unwrap_or(Transaction {
-                kind: themelio_structs::TxKind::Normal,
-                inputs: Default::default(),
-                outputs: Default::default(),
-                fee: Default::default(),
-                covenants: Default::default(),
-                data: Default::default(),
-                sigs: Default::default(),
+            ctx: ctx.unwrap_or_else(|| SpendContext {
+                spender_txkind: TxKind::Normal,
+                spender_other_inputs: Default::default(),
+                spender_index: Default::default(),
+                spender_data: Default::default(),
+                spender_output: Default::default(),
+                parent_value: Default::default(),
+                parent_denom: Denom::Mel,
+                parent_additional_data: Default::default(),
+                ed25519_signers: Default::default(),
             }),
         }
     }
@@ -99,8 +75,9 @@ impl Runner {
         let (s, t) = melodeon::compile(melo_str, path).map_err(LoadFileError::MeloError)?;
         let parsed = mil::parser::parse_no_optimize(&s).expect("BUG: mil compilation failed");
         let melvm_ops = parsed.compile_onto(BinCode::default()).0;
-        let mut executor =
-            Executor::new_from_env(melvm_ops, self.txn.clone(), Some(self.env.clone()));
+        let env =
+            EnvFile::from_spend_context(Covenant::from_ops(&melvm_ops).unwrap(), self.ctx.clone());
+        let mut executor = Executor::new_from_env(melvm_ops, env.spender_tx, Some(env.environment));
         if executor.run_discerning_to_end_preserve_stack().is_none() {
             return Err(LoadFileError::VmError(executor));
         }
@@ -123,8 +100,9 @@ impl Runner {
         let (s, t) = melodeon::compile(&s, &self.src_path).map_err(ReplError::MeloError)?;
         let parsed = mil::parser::parse_no_optimize(&s).expect("BUG: mil compilation failed");
         let melvm_ops = parsed.compile_onto(BinCode::default()).0;
-        let mut executor =
-            Executor::new_from_env(melvm_ops, self.txn.clone(), Some(self.env.clone()));
+        let env =
+            EnvFile::from_spend_context(Covenant::from_ops(&melvm_ops).unwrap(), self.ctx.clone());
+        let mut executor = Executor::new_from_env(melvm_ops, env.spender_tx, Some(env.environment));
         if executor.run_discerning_to_end_preserve_stack().is_none() {
             return Err(ReplError::VmError(executor));
         }

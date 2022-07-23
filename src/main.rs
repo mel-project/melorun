@@ -9,7 +9,7 @@ use rustyline::Editor;
 use structopt::StructOpt;
 use themelio_stf::melvm::Value;
 
-use melorun::{EnvFile, Runner};
+use melorun::Runner;
 
 #[derive(StructOpt)]
 struct Args {
@@ -17,7 +17,7 @@ struct Args {
     interactive: bool,
 
     #[structopt(short, long)]
-    environment: Option<PathBuf>,
+    spend_ctx: Option<PathBuf>,
 
     input: Option<PathBuf>,
 }
@@ -29,22 +29,24 @@ fn main() {
 
 #[cfg(feature = "rustyline")]
 fn main() -> anyhow::Result<()> {
+    use melorun::SpendContext;
+
     env_logger::init();
     // std::env::set_var("CLICOLOR_FORCE", "1");
     let mut rl = Editor::<()>::new();
 
     let args = Args::from_args();
     // try to read the environment file
-    let env_file: Option<EnvFile> = if let Some(ef) = args.environment.as_ref() {
-        serde_json::from_str(&std::fs::read_to_string(ef)?)?
+    let env_file: Option<SpendContext> = if let Some(ef) = args.spend_ctx.as_ref() {
+        serde_yaml::from_str(&std::fs::read_to_string(ef)?)?
     } else {
         None
     };
 
     let mut runner = if let Some(env_file) = env_file {
-        Runner::new(Some(env_file.environment), Some(env_file.spender_tx))
+        Runner::new(Some(env_file))
     } else {
-        Runner::new(None, None)
+        Runner::new(None)
     };
 
     // Treat input directory as a project
