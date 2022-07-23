@@ -92,8 +92,10 @@ impl Runner {
         let line = line.trim();
         let s = if self.src_contents.contains("---") {
             self.src_contents.split("---").next().unwrap()
-        } else {
+        } else if self.src_contents.contains("def") {
             &self.src_contents
+        } else {
+            ""
         };
         let s = format!("{}\n---\n{}\n\n", s, line);
         // eprintln!("{}", s);
