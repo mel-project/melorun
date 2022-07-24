@@ -38,7 +38,7 @@ impl EnvFile {
                 },
             ),
             outputs: map_to_vec(
-                sc.spender_output.clone(),
+                sc.spender_outputs.clone(),
                 CoinData {
                     covhash: Address(Default::default()),
                     value: CoinValue(0),
@@ -116,7 +116,7 @@ pub struct SpendContext {
     pub spender_data: Vec<u8>,
     #[serde(default)]
     /// Optionally fill in the outputs of the transaction.
-    pub spender_output: BTreeMap<u8, CoinData>,
+    pub spender_outputs: BTreeMap<u8, CoinData>,
     /// Value of the parent coin.
     #[serde(with = "serde_with::rust::display_fromstr", default)]
     pub parent_value: CoinValue,

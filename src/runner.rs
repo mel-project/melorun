@@ -50,7 +50,7 @@ impl Runner {
                 spender_other_inputs: Default::default(),
                 spender_index: Default::default(),
                 spender_data: Default::default(),
-                spender_output: Default::default(),
+                spender_outputs: Default::default(),
                 parent_value: Default::default(),
                 parent_denom: Denom::Mel,
                 parent_additional_data: Default::default(),
