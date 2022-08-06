@@ -60,7 +60,10 @@ impl Runner {
     }
 
     /// Loads a file containing a Melodeon program, returning the  
-    pub fn load_file(&mut self, path: &Path) -> Result<(melvm::Value, Type), LoadFileError> {
+    pub fn load_file(
+        &mut self,
+        path: &Path,
+    ) -> Result<(melvm::Value, Covenant, Type), LoadFileError> {
         let melo_str = std::fs::read_to_string(path).map_err(LoadFileError::IoError)?;
 
         self.load_str(path, &melo_str)
@@ -71,12 +74,12 @@ impl Runner {
         &mut self,
         path: &Path,
         melo_str: &str,
-    ) -> Result<(melvm::Value, Type), LoadFileError> {
+    ) -> Result<(melvm::Value, Covenant, Type), LoadFileError> {
         let (s, t) = melodeon::compile(melo_str, path).map_err(LoadFileError::MeloError)?;
-        let parsed = mil::parser::parse_no_optimize(&s).expect("BUG: mil compilation failed");
+        let parsed = mil::parser::parse(&s).expect("BUG: mil compilation failed");
         let melvm_ops = parsed.compile_onto(BinCode::default()).0;
-        let env =
-            EnvFile::from_spend_context(Covenant::from_ops(&melvm_ops).unwrap(), self.ctx.clone());
+        let covenant = Covenant::from_ops(&melvm_ops).unwrap();
+        let env = EnvFile::from_spend_context(covenant.clone(), self.ctx.clone());
         let mut executor = Executor::new_from_env(melvm_ops, env.spender_tx, Some(env.environment));
         if executor.run_discerning_to_end_preserve_stack().is_none() {
             return Err(LoadFileError::VmError(executor));
@@ -84,7 +87,7 @@ impl Runner {
         let val = executor.stack.pop().unwrap();
         self.src_contents = melo_str.to_owned();
         self.src_path = path.to_owned();
-        Ok((val, t))
+        Ok((val, covenant, t))
     }
 
     /// Runs a REPL line, returning the execution result.

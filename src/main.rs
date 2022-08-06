@@ -17,6 +17,9 @@ struct Args {
     interactive: bool,
 
     #[structopt(short, long)]
+    compile: bool,
+
+    #[structopt(short, long)]
     spend_ctx: Option<PathBuf>,
 
     input: Option<PathBuf>,
@@ -53,7 +56,11 @@ fn main() -> anyhow::Result<()> {
     //env_logger::init();
     if let Some(input) = args.input.as_ref() {
         match runner.load_file(input) {
-            Ok((val, t)) => {
+            Ok((val, cov, t)) => {
+                if args.compile {
+                    println!("{}", cov.hash());
+                    println!("{}", hex::encode(cov.0));
+                }
                 print_val_and_type(&val, &t, true);
             }
             Err(LoadFileError::MeloError(ctx)) => {
