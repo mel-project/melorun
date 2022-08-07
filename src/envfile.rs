@@ -118,7 +118,7 @@ pub struct SpendContext {
     /// Optionally fill in the outputs of the transaction.
     pub spender_outputs: BTreeMap<u8, CoinData>,
     /// Value of the parent coin.
-    #[serde(with = "serde_with::rust::display_fromstr", default)]
+    #[serde(default)]
     pub parent_value: CoinValue,
     /// Denom of the parent coin.
     #[serde(with = "serde_with::rust::display_fromstr", default = "default_denom")]
