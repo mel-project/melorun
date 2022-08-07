@@ -14,14 +14,18 @@ use melorun::Runner;
 #[derive(StructOpt)]
 struct Args {
     #[structopt(short, long)]
+    /// Starts the interactive REPL.
     interactive: bool,
 
     #[structopt(short, long)]
+    /// Compiles the program dumps to stdout the hash and hex-encoded MelVM bytecode.
     compile: bool,
 
     #[structopt(short, long)]
+    /// An optional spend context YAML file.
     spend_ctx: Option<PathBuf>,
 
+    /// The Melodeon program to run.
     input: Option<PathBuf>,
 }
 
