@@ -39,6 +39,9 @@ serde_yaml = "0.9.11"
 default=["rustyline"]
 # rustyline=[]
 
+[profile.release]
+debug=2
+
 
 # [patch.crates-io]
 # themelio-stf={path="../themelio-stf"}  
