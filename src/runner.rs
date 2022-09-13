@@ -76,9 +76,18 @@ impl Runner {
         melo_str: &str,
     ) -> Result<(melvm::Value, Covenant, Type), LoadFileError> {
         let (s, t) = melodeon::compile(melo_str, path).map_err(LoadFileError::MeloError)?;
-        let parsed = mil::parser::parse(&s).expect("BUG: mil compilation failed");
+        log::debug!("melodeon => mil completed!");
+        let parsed = mil::parser::parse_no_optimize(&s).expect("BUG: mil compilation failed");
         let melvm_ops = parsed.compile_onto(BinCode::default()).0;
         let covenant = Covenant::from_ops(&melvm_ops).unwrap();
+        log::debug!(
+            "mil => melvm completed: {} ops, weight {}",
+            melvm_ops.len(),
+            covenant.weight().unwrap()
+        );
+        // for op in melvm_ops.iter() {
+        //     log::debug!("{}", format!("{:?}", op))
+        // }
         let env = EnvFile::from_spend_context(covenant.clone(), self.ctx.clone());
         let mut executor = Executor::new_from_env(melvm_ops, env.spender_tx, Some(env.environment));
         if executor.run_discerning_to_end_preserve_stack().is_none() {
