@@ -54,6 +54,7 @@ impl Runner {
                 parent_value: Default::default(),
                 parent_denom: Denom::Mel,
                 parent_additional_data: Default::default(),
+                parent_fake_txhash: Default::default(),
                 ed25519_signers: Default::default(),
             }),
         }

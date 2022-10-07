@@ -68,7 +68,7 @@ impl EnvFile {
             spender_tx,
             environment: CovenantEnv {
                 parent_coinid: CoinID {
-                    txhash: TxHash(Default::default()),
+                    txhash: sc.parent_fake_txhash.into(),
                     index: 0,
                 },
                 parent_cdh: CoinDataHeight {
@@ -126,6 +126,9 @@ pub struct SpendContext {
     /// Additional data of the parent coin.
     #[serde(with = "stdcode::hex", default)]
     pub parent_additional_data: Vec<u8>,
+    /// The "fake" transaction hash of the parent transaction.
+    #[serde(with = "serde_with::rust::display_fromstr", default)]
+    pub parent_fake_txhash: HashVal,
     /// Private keys (in hex, proper deserialization TODO) that the transaction is signed *by*.
     #[serde(default)]
     pub ed25519_signers: BTreeMap<u8, String>,
